@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package>
+  <name>fri_object_following</name>
+  <version>0.0.0</version>
+  <description>The fri_object_following package</description>
+
+  <maintainer email="msbrenan@cs.utexas.edu">Michael Brenan</maintainer>
+  <maintainer email="sadani@cs.utexas.edu">Saket Sadani</maintainer>
+
+  <license>MIT</license>
+
+  <url type="repository">https://github.com/blacksmithgu/fri_object_following/</url>
+
+  <author email="msbrenan@cs.utexas.edu">Michael Brenan</author>
+  <author email="sadani@cs.utexas.edu">Saket Sadani</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Unused export information (for now). -->
+  <export></export>
+</package>
