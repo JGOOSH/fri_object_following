@@ -1,0 +1,19 @@
+How to select region as input param. and then draw around it:
+============================================================
+We want to be able to specificy an aribitrary shape and then display that region on the screen (for debugging and general prettiness). This shape should be able to be non-uniform (will need some openCV garbage), and then we want to be able to find its left-most/right-most point for the actual tracking.
+1) How to select region (find left and right/top and bottom)
+2) How to draw it
+
+
+Determining how to actually "Track":
+===================================
+-want to continue to display bounding box in resulting images
+
+
+
+Determination of distance/how vigorously to follow:
+==================================================
+Given a bounding region, we consider a line from the center/bottom of our image (where the robot's camera is placed) to the leftmost point of the region, and also to the rightmost point. Given these two points, we can calculate the initial angular size of the image/object/person in consideration. As movement take place, if the anglur size gets larger (aka the object is now closer to the object), then we move slower. If the angular size decreases, then the object is now further away (most likely) and we move with more vigour. 
+Note: Caveats to this method include that the object may turn, or be occluded, resulting in a smaller angular size. In this case, we will want to weight the angular size differently/less because it may not be a valid representation of the. One slight partial solution to this is that we make an effort to always make the robot turn towards the person. This, however, will be problematic if we are trying to turn as the person hides behind a wall and then we are lost. At this point we would have to readjust and move in the general direction we last saw the person until we find it again.
+
+Extra: consider angle from top and bottom in addition to left and right
