@@ -1,2 +1,8 @@
 http://www.pyimagesearch.com/2015/01/19/find-distance-camera-objectmarker-using-python-opencv/
---Triangle similarity distance using openCV and Python
+    --Triangle similarity distance using openCV and Python
+
+http://www.pyimagesearch.com/2015/09/21/opencv-track-object-movement/
+    --How to track objects
+
+http://photo.stackexchange.com/questions/12434/how-do-i-calculate-the-distance-of-an-object-in-a-photo
+    --Calculate distance between objects (formula)

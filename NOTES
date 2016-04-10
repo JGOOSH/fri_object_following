@@ -10,7 +10,8 @@ Determining how to actually "Track":
 -want to continue to display bounding box in resulting images
 -use openCV to track color of region specified (TODO figure out which openCV things are useul/relevant)
 
-
+Sources:
+http://www.pyimagesearch.com/2015/09/21/opencv-track-object-movement/
 
 Determination of distance/how vigorously to follow:
 ==================================================
@@ -23,4 +24,11 @@ Extra: consider angle from top and bottom in addition to left and right
 Send message to base:
 =====================
 -Once linear and angular movement (yaw) has been calculated, send to base
+
+Sources:
+http://www.pyimagesearch.com/2015/01/19/find-distance-camera-objectmarker-using-python-opencv/
+
+http://photo.stackexchange.com/questions/12434/how-do-i-calculate-the-distance-of-an-object-in-a-photo
+
+Extra: consider angle from top and bottom in addition to left and right
 
