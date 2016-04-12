@@ -6,3 +6,7 @@ http://www.pyimagesearch.com/2015/09/21/opencv-track-object-movement/
 
 http://photo.stackexchange.com/questions/12434/how-do-i-calculate-the-distance-of-an-object-in-a-photo
     --Calculate distance between objects (formula)
+
+Comaniciu, D., Ramesh, V., & Meer, P. (2000). Real-Time Tracking of Non-Rigid Objects using Mean Shift. IEEE. Retrieved April 11, 2016, from http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=854761
+    --Tracking algorithm to follow moving objects even if mostly occluded, 
+      target scale varies, and significant clutter in background
