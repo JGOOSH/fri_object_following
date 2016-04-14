@@ -1,3 +1,38 @@
+UPDATED PLAN
+++++++++++++
+
+-use pcl human detection, see what info it gives us (depth, center of people, bouding boxes) 
+-using 2-d images, figure out which of the people we want to follow
+-use the depth info and location to send a message to move the base
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 How to select region as input param. and then draw around it:
 ============================================================
 We want to be able to specificy an aribitrary shape and then display that region on the screen (for debugging and general prettiness). This shape should be able to be non-uniform (will need some openCV garbage), and then we want to be able to find its left-most/right-most point for the actual tracking.
@@ -10,8 +45,7 @@ Determining how to actually "Track":
 -want to continue to display bounding box in resulting images
 -use openCV to track color of region specified (TODO figure out which openCV things are useul/relevant)
 
-Sources:
-http://www.pyimagesearch.com/2015/09/21/opencv-track-object-movement/
+
 
 Determination of distance/how vigorously to follow:
 ==================================================
@@ -24,11 +58,4 @@ Extra: consider angle from top and bottom in addition to left and right
 Send message to base:
 =====================
 -Once linear and angular movement (yaw) has been calculated, send to base
-
-Sources:
-http://www.pyimagesearch.com/2015/01/19/find-distance-camera-objectmarker-using-python-opencv/
-
-http://photo.stackexchange.com/questions/12434/how-do-i-calculate-the-distance-of-an-object-in-a-photo
-
-Extra: consider angle from top and bottom in addition to left and right
 
