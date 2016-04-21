@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
 	rospy
 	std_msgs
 	geometry_msgs
+	sensor_msgs
 	cv_bridge
 	image_transport
 )
@@ -26,5 +27,5 @@ catkin_package()
 include_directories(${catkin_INCLUDE_DIRS})
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-add_executable(creeper src/creeper.cpp)
+add_executable(creeper src/creeper.cpp src/Person.cpp src/PersonDetector.cpp)
 target_link_libraries(creeper ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
