@@ -15,7 +15,25 @@
 #include "PersonDetector.h"
 #include "Person.h"
 
+#include "utils.h"
+
+#include <message_filters/subscriber.h>
+#include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
+
 #define POSE_TOPIC "segbot_pcl_person_detector/human_poses"
+#define CLOUD_TOPIC "segbot_pcl_person_detector/human_clouds"
+
+
+PersonDetector detector;
+
+// TODO: Add classifier back.
+// TODO: Seriously. This doesn't work yet.
+// TODO: RIP. RIP C++.
+// TODO: Try using a real language, pal
+void detector_callback(const PosePtr pose, const CloudPtr cloud) {
+	detector.handle_update(pose, cloud);
+}
 
 /*
  * Main entry point for the node.
@@ -25,12 +43,18 @@ int main(int argc, char* argv[]) {
 	ros::init(argc, argv, "creeper");
 	ros::NodeHandle node_handle;
 
-	// Create the person detector
-	PersonDetector detector;
+	message_filters::Subscriber<geometry_msgs::PoseStamped> sub_pose(node_handle, POSE_TOPIC, 10);
+	message_filters::Subscriber<sensor_msgs::PointCloud2> sub_cloud(node_handle, CLOUD_TOPIC, 10);
 
-	ros::Subscriber pose_sub =
-			node_handle.subscribe(POSE_TOPIC, 10, &PersonDetector::callback_new_pose, &detector);
+	// Then, set up our combining thingy.
+	typedef message_filters::sync_policies::ApproximateTime<geometry_msgs::PoseStamped, sensor_msgs::PointCloud2> ApproxSyncPolicy;
+
+	// Set up the synchronizer and register the callback.
+	message_filters::Synchronizer<ApproxSyncPolicy> sync(ApproxSyncPolicy(10), sub_pose, sub_cloud);
+	sync.registerCallback(boost::bind(detector_callback, _1, _2));
 
 	// To be extra useful, do nothing and just spin.
 	ros::spin();
+
+	return 0;
 }

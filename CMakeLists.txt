@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
 	tf
 	move_base_msgs
 	message_generation
+	message_filters
 	roscpp
 	rospy
 	std_msgs

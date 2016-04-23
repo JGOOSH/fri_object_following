@@ -6,8 +6,10 @@
  */
 
 #include "PersonDetector.h"
+#include "TrivialPersonClassifier.h"
 
-PersonDetector::PersonDetector() {
+PersonDetector::PersonDetector()
+	: _current_uid(0) {
 
 }
 
@@ -15,14 +17,82 @@ PersonDetector::~PersonDetector() {
 	// TODO Auto-generated destructor stub
 }
 
-void PersonDetector::callback_new_pose(const geometry_msgs::PoseStamped::ConstPtr& pose) {
+/*
+ * Handles the update of an individual.
+ */
+Person& PersonDetector::handle_update(const PosePtr pose, const CloudPtr cloud) {
+	// First, we need to find the person actually associated with the cloud, if any.
+	boost::optional<Person&> victim = classify_cloud(*cloud);
+
+	// If we don't find a person, we need to create a new person.
+	if(!victim.is_initialized())
+		return create_person((*pose).pose, *cloud);
+	else {
+		victim->push_pose((*pose).pose);
+		return victim.get();
+	}
 
 }
 
-void PersonDetector::callback_new_cloud(const sensor_msgs::PointCloud2::ConstPtr& cloud) {
+/*
+ * Attempts to find the person which is most closely related to the provided cloud.
+ */
+boost::optional<Person&> PersonDetector::classify_cloud(const sensor_msgs::PointCloud2& cloud) {
+	// First, we need to see if any of the classifiers state that we've seen this person before.
+	for(std::map<unsigned int, Person>::iterator iter = tracked().begin(); iter != tracked().end(); iter++) {
+		unsigned int uid = (*iter).first;
+		boost::optional<PersonClassifier&> classifier = classifier_by_id(uid);
 
+		// If the classifier doesn't exist, there isn't much we can do to classify.
+		if(!classifier.is_initialized())
+			continue;
+
+		if(classifier.get().is_equivalent(cloud))
+			return (*iter).second;
+	}
+
+	return boost::optional<Person&>();
 }
 
-void handle_update(geometry_msgs::Pose::ConstPtr& pose, sensor_msgs::PointCloud2::ConstPtr& cloud) {
+/*
+ * Create a new person from the provided stamped pose and point cloud, and insert them into the map.
+ */
+Person& PersonDetector::create_person(const geometry_msgs::Pose& pose, const sensor_msgs::PointCloud2& cloud) {
+	// Make a new person with the trivial person classifier, for now.
+	Person lifeform(_current_uid++);
 
+	// TODO: Add classifier back.
+	// TODO: Seriously. This doesn't work yet.
+	// TODO: RIP. RIP C++.
+	// TODO: Try using a real language, pal
+	boost::shared_ptr<PersonClassifier> trivial_classifier(new TrivialPersonClassifier);
+
+	// Then insert them.
+	tracked().insert(std::pair<unsigned int, Person>(lifeform.uid(), lifeform));
+	classifiers().insert(
+			std::pair<unsigned int, boost::shared_ptr<PersonClassifier> >(lifeform.uid(), trivial_classifier)
+	);
+
+	// Return a reference to the person in the map.
+	return tracked()[lifeform.uid()];
+}
+
+/*
+ * Attempt to find a person by UID. Returns a reference to the person if found, or an empty optional if not.
+ */
+boost::optional<Person&> PersonDetector::person_by_id(unsigned int uid) {
+	if(tracked().find(uid) != tracked().end())
+		return tracked()[uid];
+
+	return boost::optional<Person&>();
+}
+
+/*
+ * Attempt to find a classifier by UID. Returns a reference to the classifier if found, or an empty optional otherwise.
+ */
+boost::optional<PersonClassifier&> PersonDetector::classifier_by_id(unsigned int uid) {
+	if(classifiers().find(uid)!= classifiers().end())
+		return *classifiers()[uid];
+
+	return boost::optional<PersonClassifier&>();
 }
