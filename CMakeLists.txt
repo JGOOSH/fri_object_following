@@ -28,5 +28,10 @@ catkin_package()
 include_directories(${catkin_INCLUDE_DIRS})
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-add_executable(creeper src/creeper.cpp src/Person.cpp src/PersonDetector.cpp)
+add_executable(creeper 
+	src/creeper.cpp 
+	src/Person.cpp 
+	src/PersonDetector.cpp
+	src/TrivialPersonClassifier.cpp
+	src/PersonClassifier.cpp)
 target_link_libraries(creeper ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})

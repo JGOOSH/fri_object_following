@@ -27,3 +27,7 @@ void Person::push_pose(const geometry_msgs::Pose pose) {
 	// Then, update the update time.
 	_last_update_time = ros::Time::now();
 }
+
+geometry_msgs::Pose Person::last_pose() {
+	return last_poses().front();
+}

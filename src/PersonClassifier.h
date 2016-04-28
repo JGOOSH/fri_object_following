@@ -8,6 +8,8 @@
 #ifndef SRC_PERSONCLASSIFIER_H_
 #define SRC_PERSONCLASSIFIER_H_
 
+#include <sensor_msgs/PointCloud2.h>
+
 /*
  * Classifies random input clouds from the sensor as either a positive or negative match for
  * the person this classifier is associated with.

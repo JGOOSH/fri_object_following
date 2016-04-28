@@ -58,13 +58,10 @@ boost::optional<Person&> PersonDetector::classify_cloud(const sensor_msgs::Point
  * Create a new person from the provided stamped pose and point cloud, and insert them into the map.
  */
 Person& PersonDetector::create_person(const geometry_msgs::Pose& pose, const sensor_msgs::PointCloud2& cloud) {
-	// Make a new person with the trivial person classifier, for now.
+	// Make a new person with the trivial person classifier, for now, and then give them an initial pose.
 	Person lifeform(_current_uid++);
+	lifeform.push_pose(pose);
 
-	// TODO: Add classifier back.
-	// TODO: Seriously. This doesn't work yet.
-	// TODO: RIP. RIP C++.
-	// TODO: Try using a real language, pal
 	boost::shared_ptr<PersonClassifier> trivial_classifier(new TrivialPersonClassifier);
 
 	// Then insert them.

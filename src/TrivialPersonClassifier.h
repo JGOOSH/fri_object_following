@@ -8,6 +8,7 @@
 #ifndef SRC_TRIVIALPERSONCLASSIFIER_H_
 #define SRC_TRIVIALPERSONCLASSIFIER_H_
 
+#include "PersonClassifier.h"
 #include "sensor_msgs/PointCloud2.h"
 
 class TrivialPersonClassifier : public PersonClassifier {
