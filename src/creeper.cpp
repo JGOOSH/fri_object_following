@@ -25,8 +25,8 @@
 #include <actionlib/client/simple_action_client.h>
 #include <move_base_msgs/MoveBaseAction.h>
 
-#define POSE_TOPIC "segbot_pcl_person_detector/human_poses"
-#define CLOUD_TOPIC "segbot_pcl_person_detector/human_clouds"
+#define POSE_TOPIC "/segbot_pcl_person_detector/human_poses"
+#define CLOUD_TOPIC "/segbot_pcl_person_detector/human_clouds"
 
 #define UPDATE_RATE 10
 #define DISTANCE_BUFFER 1.0
@@ -34,17 +34,43 @@
 #define PERSON_FRAME_OF_REFERENCE "/map"
 #define CAMERA_FRAME_OF_REFERENCE "/nav_kinect_rgb_optical_frame"
 
+// C++ is a sad, sad language
 
 PersonDetector detector;
+std::list<PosePtr> pose_backlog;
+std::list<CloudPtr> cloud_backlog;
 
-// TODO: Add classifier back.
-// TODO: Seriously. This doesn't work yet.
-// TODO: RIP. RIP C++.
-// TODO: Try using a real language, pal
+/*
+ * Called whenever a new human pose + cloud pair comes in.
+ */
 void detector_callback(const PosePtr pose, const CloudPtr cloud) {
 	// Person is unused, but we grab it simply for potential future use.
 	Person& updated_person = detector.handle_update(pose, cloud);
+
+	ROS_INFO("Detector Pose: (%f, %f, %f) : (%f, %f, %f, %f)", (*pose).pose.position.x, (*pose).pose.position.y, (*pose).pose.position.z,
+			(*pose).pose.orientation.w, (*pose).pose.orientation.x, (*pose).pose.orientation.z, (*pose).pose.orientation.z);
 }
+
+void pose_callback(const PosePtr pose) {
+	pose_backlog.push_back(pose);
+
+	if(pose_backlog.size() >= 1 && cloud_backlog.size() >= 1) {
+		detector_callback(pose_backlog.front(), cloud_backlog.front());
+		pose_backlog.pop_front();
+		cloud_backlog.pop_front();
+	}
+}
+
+void cloud_callback(const CloudPtr cloud) {
+	cloud_backlog.push_back(cloud);
+
+	if(pose_backlog.size() >= 1 && cloud_backlog.size() >= 1) {
+		detector_callback(pose_backlog.front(), cloud_backlog.front());
+		pose_backlog.pop_front();
+		cloud_backlog.pop_front();
+	}
+}
+
 
 /*
  * Creates a dummy stamped pose which we can pass off to the transform listener.
@@ -66,16 +92,13 @@ int main(int argc, char* argv[]) {
 	ros::init(argc, argv, "creeper");
 	ros::NodeHandle node_handle;
 
-	// Create subscribers to point cloud / human pose information.
-	message_filters::Subscriber<geometry_msgs::PoseStamped> sub_pose(node_handle, POSE_TOPIC, 10);
-	message_filters::Subscriber<sensor_msgs::PointCloud2> sub_cloud(node_handle, CLOUD_TOPIC, 10);
+	ROS_INFO("Connection to ROS initialized...");
 
-	// Then, set up our combining thingy.
-	typedef message_filters::sync_policies::ApproximateTime<geometry_msgs::PoseStamped, sensor_msgs::PointCloud2> ApproxSyncPolicy;
+	// Make dummy subscribers to try and get SOMETHING to work
+	ros::Subscriber pose_subscriber = node_handle.subscribe(POSE_TOPIC, 10, pose_callback);
+	ros::Subscriber cloud_subscriber = node_handle.subscribe(CLOUD_TOPIC, 10, cloud_callback);
 
-	// Set up the synchronizer and register the callback.
-	message_filters::Synchronizer<ApproxSyncPolicy> sync(ApproxSyncPolicy(10), sub_pose, sub_cloud);
-	sync.registerCallback(boost::bind(detector_callback, _1, _2));
+	ROS_INFO("Message synchronizer initialized...");
 
 	// Now, we just repeatedly loop and then follow the first person in the detector.
 	ros::Rate update_rate(UPDATE_RATE);
@@ -83,6 +106,8 @@ int main(int argc, char* argv[]) {
 
 	// The action client responsible for causing motion.
 	actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> action_client("move_base", true);
+
+	ROS_INFO("Transform and action listeners initialized...");
 
 	// Spin once to initialize information
 	ros::spinOnce();
@@ -94,6 +119,8 @@ int main(int argc, char* argv[]) {
 		// If a person with index 0 doesn't exist yet, sit here uselessly.
 		if(!potential_person.is_initialized()) {
 			ROS_INFO("No person found, sleeping...");
+
+			ros::spinOnce();
 			update_rate.sleep();
 			continue;
 		}
@@ -101,18 +128,23 @@ int main(int argc, char* argv[]) {
 		// If they do exist, extract them.
 		Person& person = potential_person.get();
 
+		ROS_INFO("Person %ld fetched from the person detector...", person.uid());
 
 		// Now, we need to convert the person's pose from the /map frame of reference
 		// to the kinect frame of reference, so we use the transform listener.
 		geometry_msgs::PoseStamped input_pose = create_dummy_stamped_pose(person.last_pose(), PERSON_FRAME_OF_REFERENCE);
 		geometry_msgs::PoseStamped output_pose;
-		transform_listener.waitForTransform(CAMERA_FRAME_OF_REFERENCE, PERSON_FRAME_OF_REFERENCE, ros::Time(0), ros::Duration(5.0));
+
+		ROS_INFO("Input Pose: (%f, %f, %f) : (%f, %f, %f, %f)", input_pose.pose.position.x, input_pose.pose.position.y, input_pose.pose.position.z,
+				input_pose.pose.orientation.w, input_pose.pose.orientation.x, input_pose.pose.orientation.z, input_pose.pose.orientation.z);
+
 		transform_listener.transformPose(CAMERA_FRAME_OF_REFERENCE, input_pose, output_pose);
+		transform_listener.waitForTransform(CAMERA_FRAME_OF_REFERENCE, PERSON_FRAME_OF_REFERENCE, ros::Time(0), ros::Duration(5.0));
 
 		// Now, we finally have the person's pose relative to us!
 		geometry_msgs::Pose relative_person_pose = output_pose.pose;
 
-		ROS_INFO("Person %ld found at pose (%f, %f, %f)", person.uid(),
+		ROS_INFO(" -> Person %ld found at pose (%f, %f, %f)", person.uid(),
 				relative_person_pose.position.x, relative_person_pose.position.y, relative_person_pose.position.z);
 
 		// Now, we generate the move base goal based on the relative person position.
@@ -135,7 +167,7 @@ int main(int argc, char* argv[]) {
 		double tentative_distance = sqrt(pow(relative_person_pose.position.x, 2) + pow(relative_person_pose.position.y, 2));
 		double target_distance = std::max(0.0, tentative_distance - DISTANCE_BUFFER);
 
-		ROS_INFO("Moving %f distance units with an angle of %f...", target_distance, target_yaw);
+		ROS_INFO(" -> Moving %f distance units with an angle of %f...", target_distance, target_yaw);
 
 		// Subtract some from the distance to move to ensure that we don't move ONTO the lifeform
 		move_goal.target_pose.pose.position.x = target_distance;
@@ -146,6 +178,8 @@ int main(int argc, char* argv[]) {
 		// Send the goal and wait 5 seconds, at most, for a response.
 		action_client.sendGoal(move_goal);
 		action_client.waitForResult(ros::Duration(5.0f));
+
+		ros::spinOnce();
 	}
 
 	return 0;

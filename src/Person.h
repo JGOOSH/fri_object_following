@@ -47,13 +47,13 @@ public:
 	ros::Time last_update_time() { return _last_update_time; }
 
 	// Obtain a set of the last poses this person had. Newer values are pushed to the front of the list.
-	std::list<geometry_msgs::Pose> last_poses() { return _last_poses; }
+	std::list<geometry_msgs::Pose>& last_poses() { return _last_poses; }
 
 	// Return the very latest pose pushed to this person.
-	geometry_msgs::Pose last_pose();
+	geometry_msgs::Pose& last_pose();
 
 	// Pushes a new pose to the set of last poses which this person has, and updates the last update time.
-	void push_pose(const geometry_msgs::Pose pose);
+	void push_pose(const geometry_msgs::Pose& pose);
 };
 
 #endif /* SRC_PERSON_H_ */

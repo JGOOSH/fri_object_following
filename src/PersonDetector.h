@@ -46,12 +46,12 @@ public:
 	/*
 	 * Returns the map of all currently tracked individuals.
 	 */
-	std::map<unsigned int, Person> tracked() { return _tracked; }
+	std::map<unsigned int, Person>& tracked() { return _tracked; }
 
 	/*
 	 * Returns the map of all active classifiers for tracked individuals.
 	 */
-	std::map<unsigned int, boost::shared_ptr<PersonClassifier> > classifiers() { return _classifiers; }
+	std::map<unsigned int, boost::shared_ptr<PersonClassifier> >& classifiers() { return _classifiers; }
 
 	/*
 	 * Returns a reference to the person with the specified ID, if they exist.

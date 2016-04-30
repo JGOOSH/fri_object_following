@@ -16,7 +16,7 @@ Person::~Person() {
 	// Party or something
 }
 
-void Person::push_pose(const geometry_msgs::Pose pose) {
+void Person::push_pose(const geometry_msgs::Pose& pose) {
 	// If our list is full, pop from the back.
 	if(last_poses().size() >= PERSON_STORED_POSE_COUNT)
 		last_poses().pop_back();
@@ -28,6 +28,6 @@ void Person::push_pose(const geometry_msgs::Pose pose) {
 	_last_update_time = ros::Time::now();
 }
 
-geometry_msgs::Pose Person::last_pose() {
+geometry_msgs::Pose& Person::last_pose() {
 	return last_poses().front();
 }

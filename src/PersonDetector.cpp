@@ -8,6 +8,8 @@
 #include "PersonDetector.h"
 #include "TrivialPersonClassifier.h"
 
+#include <ros/ros.h>
+
 PersonDetector::PersonDetector()
 	: _current_uid(0) {
 
@@ -48,10 +50,10 @@ boost::optional<Person&> PersonDetector::classify_cloud(const sensor_msgs::Point
 			continue;
 
 		if(classifier.get().is_equivalent(cloud))
-			return (*iter).second;
+			return boost::optional<Person&>((*iter).second);
 	}
 
-	return boost::optional<Person&>();
+	return boost::none;
 }
 
 /*
@@ -65,10 +67,8 @@ Person& PersonDetector::create_person(const geometry_msgs::Pose& pose, const sen
 	boost::shared_ptr<PersonClassifier> trivial_classifier(new TrivialPersonClassifier);
 
 	// Then insert them.
-	tracked().insert(std::pair<unsigned int, Person>(lifeform.uid(), lifeform));
-	classifiers().insert(
-			std::pair<unsigned int, boost::shared_ptr<PersonClassifier> >(lifeform.uid(), trivial_classifier)
-	);
+	tracked()[lifeform.uid()] = lifeform;
+	classifiers()[lifeform.uid()] = trivial_classifier;
 
 	// Return a reference to the person in the map.
 	return tracked()[lifeform.uid()];
@@ -78,18 +78,18 @@ Person& PersonDetector::create_person(const geometry_msgs::Pose& pose, const sen
  * Attempt to find a person by UID. Returns a reference to the person if found, or an empty optional if not.
  */
 boost::optional<Person&> PersonDetector::person_by_id(unsigned int uid) {
-	if(tracked().find(uid) != tracked().end())
+	if(tracked().count(uid) >= 1)
 		return tracked()[uid];
 
-	return boost::optional<Person&>();
+	return boost::none;
 }
 
 /*
  * Attempt to find a classifier by UID. Returns a reference to the classifier if found, or an empty optional otherwise.
  */
 boost::optional<PersonClassifier&> PersonDetector::classifier_by_id(unsigned int uid) {
-	if(classifiers().find(uid)!= classifiers().end())
+	if(classifiers().count(uid) >= 1)
 		return *classifiers()[uid];
 
-	return boost::optional<PersonClassifier&>();
+	return boost::none;
 }
