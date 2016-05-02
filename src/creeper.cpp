@@ -30,6 +30,7 @@
 
 #define UPDATE_RATE 10
 #define DISTANCE_BUFFER 1.0
+#define PI 3.1415926
 
 #define PERSON_FRAME_OF_REFERENCE "/map"
 #define CAMERA_FRAME_OF_REFERENCE "/nav_kinect_rgb_optical_frame"
@@ -112,6 +113,8 @@ int main(int argc, char* argv[]) {
 	// Spin once to initialize information
 	ros::spinOnce();
 
+	ros::Time last_update_time = ros::Time::now();
+
 	while(ros::ok()) {
 		// Fetch person numero 0
 		boost::optional<Person&> potential_person = detector.person_by_id(0);
@@ -127,6 +130,14 @@ int main(int argc, char* argv[]) {
 
 		// If they do exist, extract them.
 		Person& person = potential_person.get();
+
+		if(person.last_update_time() <= last_update_time) {
+			ROS_INFO("Person info is stale, sleeping...");
+
+			ros::spinOnce();
+			update_rate.sleep();
+			continue;
+		}
 
 		ROS_INFO("Person %ld fetched from the person detector...", person.uid());
 
@@ -161,7 +172,7 @@ int main(int argc, char* argv[]) {
 		// For now, we assume that only X/Yaw works.
 
 		// We compute the yaw as the arctan of y/x, as usual.
-		double target_yaw = atan2(relative_person_pose.position.y, relative_person_pose.position.x);
+		double target_yaw = atan2(relative_person_pose.position.x, relative_person_pose.position.y) + PI/2;
 
 		// We compute the distance as the magnitude of the X,Y coordinates.
 		double tentative_distance = sqrt(pow(relative_person_pose.position.x, 2) + pow(relative_person_pose.position.y, 2));
@@ -175,9 +186,8 @@ int main(int argc, char* argv[]) {
 		move_goal.target_pose.pose.position.z = 0.0;
 		move_goal.target_pose.pose.orientation = tf::createQuaternionMsgFromYaw(target_yaw);
 
-		// Send the goal and wait 5 seconds, at most, for a response.
-		action_client.sendGoal(move_goal);
-		action_client.waitForResult(ros::Duration(5.0f));
+		// Send the goal and wait 3 seconds, at most, for a response.
+		action_client.sendGoalAndWait(move_goal, ros::Duration(3.0f));
 
 		ros::spinOnce();
 	}
