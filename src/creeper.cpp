@@ -55,7 +55,7 @@ void detector_callback(const PosePtr pose, const CloudPtr cloud) {
 void pose_callback(const PosePtr pose) {
 	pose_backlog.push_back(pose);
 
-	if(pose_backlog.size() >= 1 && cloud_backlog.size() >= 1) {
+	while(pose_backlog.size() >= 1 && cloud_backlog.size() >= 1) {
 		detector_callback(pose_backlog.front(), cloud_backlog.front());
 		pose_backlog.pop_front();
 		cloud_backlog.pop_front();
@@ -65,7 +65,7 @@ void pose_callback(const PosePtr pose) {
 void cloud_callback(const CloudPtr cloud) {
 	cloud_backlog.push_back(cloud);
 
-	if(pose_backlog.size() >= 1 && cloud_backlog.size() >= 1) {
+	while(pose_backlog.size() >= 1 && cloud_backlog.size() >= 1) {
 		detector_callback(pose_backlog.front(), cloud_backlog.front());
 		pose_backlog.pop_front();
 		cloud_backlog.pop_front();
@@ -131,6 +131,7 @@ int main(int argc, char* argv[]) {
 		// If they do exist, extract them.
 		Person& person = potential_person.get();
 
+		// Don't do anything if this person's data is stale.
 		if(person.last_update_time() <= last_update_time) {
 			ROS_INFO("Person info is stale, sleeping...");
 
@@ -138,6 +139,9 @@ int main(int argc, char* argv[]) {
 			update_rate.sleep();
 			continue;
 		}
+
+		// Update the last update time, otherwise.
+		last_update_time = person.last_update_time();
 
 		ROS_INFO("Person %ld fetched from the person detector...", person.uid());
 
@@ -172,7 +176,7 @@ int main(int argc, char* argv[]) {
 		// For now, we assume that only X/Yaw works.
 
 		// We compute the yaw as the arctan of y/x, as usual.
-		double target_yaw = atan2(relative_person_pose.position.x, relative_person_pose.position.y) + PI/2;
+		double target_yaw = atan2(-relative_person_pose.position.y, relative_person_pose.position.x);
 
 		// We compute the distance as the magnitude of the X,Y coordinates.
 		double tentative_distance = sqrt(pow(relative_person_pose.position.x, 2) + pow(relative_person_pose.position.y, 2));
