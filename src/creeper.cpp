@@ -27,6 +27,7 @@
 
 #define POSE_TOPIC "/segbot_pcl_person_detector/human_poses"
 #define CLOUD_TOPIC "/segbot_pcl_person_detector/human_clouds"
+#define TARGET_TOPIC "/creeper/target_pose"
 
 #define UPDATE_RATE 10
 #define DISTANCE_BUFFER 1.0
@@ -72,7 +73,6 @@ void cloud_callback(const CloudPtr cloud) {
 	}
 }
 
-
 /*
  * Creates a dummy stamped pose which we can pass off to the transform listener.
  */
@@ -98,6 +98,9 @@ int main(int argc, char* argv[]) {
 	// Make dummy subscribers to try and get SOMETHING to work
 	ros::Subscriber pose_subscriber = node_handle.subscribe(POSE_TOPIC, 10, pose_callback);
 	ros::Subscriber cloud_subscriber = node_handle.subscribe(CLOUD_TOPIC, 10, cloud_callback);
+
+	// Make a dummy publisher to show where exactly we intend to move.
+	ros::Publisher target_publisher = node_handle.advertise<geometry_msgs::PoseStamped>(TARGET_TOPIC, 10);
 
 	ROS_INFO("Message synchronizer initialized...");
 
@@ -176,10 +179,10 @@ int main(int argc, char* argv[]) {
 		// For now, we assume that only X/Yaw works.
 
 		// We compute the yaw as the arctan of y/x, as usual.
-		double target_yaw = atan2(-relative_person_pose.position.y, relative_person_pose.position.x);
+		double target_yaw = atan2(-relative_person_pose.position.x, relative_person_pose.position.z);
 
 		// We compute the distance as the magnitude of the X,Y coordinates.
-		double tentative_distance = sqrt(pow(relative_person_pose.position.x, 2) + pow(relative_person_pose.position.y, 2));
+		double tentative_distance = sqrt(pow(relative_person_pose.position.x, 2) + pow(relative_person_pose.position.z, 2));
 		double target_distance = std::max(0.0, tentative_distance - DISTANCE_BUFFER);
 
 		ROS_INFO(" -> Moving %f distance units with an angle of %f...", target_distance, target_yaw);
@@ -189,6 +192,9 @@ int main(int argc, char* argv[]) {
 		move_goal.target_pose.pose.position.y = 0.0;
 		move_goal.target_pose.pose.position.z = 0.0;
 		move_goal.target_pose.pose.orientation = tf::createQuaternionMsgFromYaw(target_yaw);
+
+		// Publish where we tenatively want to go.
+		target_publisher.publish(move_goal.target_pose);
 
 		// Send the goal and wait 3 seconds, at most, for a response.
 		action_client.sendGoalAndWait(move_goal, ros::Duration(3.0f));
