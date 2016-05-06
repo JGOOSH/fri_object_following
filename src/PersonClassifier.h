@@ -1,10 +1,3 @@
-/*
- * PersonClassifier.h
- *
- *  Created on: Apr 23, 2016
- *      Author: blacksmithgu
- */
-
 #ifndef SRC_PERSONCLASSIFIER_H_
 #define SRC_PERSONCLASSIFIER_H_
 

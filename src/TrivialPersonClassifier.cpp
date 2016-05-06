@@ -18,9 +18,12 @@ TrivialPersonClassifier::TrivialPersonClassifier() {
  * Default destructor which does nothing.
  */
 TrivialPersonClassifier::~TrivialPersonClassifier() {
-	// TODO Auto-generated destructor stub
+
 }
 
+/*
+ * The most advanced equivalence checker of all time. Always returns true.
+ */
 bool TrivialPersonClassifier::is_equivalent(const sensor_msgs::PointCloud2& cloud) {
 	return true;
 }

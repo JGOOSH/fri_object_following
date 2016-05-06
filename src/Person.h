@@ -1,11 +1,3 @@
-/*
- *  Represents a detected and tracked person.
- *
- *  Created on: Apr 20, 2016
- *      Author: blacksmithgu
- */
-
-
 #ifndef SRC_PERSON_H_
 #define SRC_PERSON_H_
 
@@ -15,6 +7,9 @@
 
 #define PERSON_STORED_POSE_COUNT 5
 
+/*
+ * Represents a "person", which is simply a unique entity being tracked by the Person Detector.
+ */
 class Person {
 private:
 	// The unique identifier for this person.
@@ -27,9 +22,9 @@ private:
 	std::list<geometry_msgs::Pose> _last_poses;
 
 public:
-
 	/*
-	 * Construct a "default" person for the purposes of maps and all that pizazz?
+	 * Construct an empty instance of a person with nothing set. Apparently required for maps and
+	 * other standard collections (which implicitly rely on it existing?)
 	 */
 	Person();
 
@@ -40,19 +35,29 @@ public:
 
 	virtual ~Person();
 
-	// Obtain the current UID of the person.
+	/*
+	 * Obtain the current UID of the person.
+	 */
 	unsigned long uid() { return _uid; }
 
-	// Obtain the last time this person was updated.
+	/*
+	 * Obtain the last time this person was updated.
+	 */
 	ros::Time last_update_time() { return _last_update_time; }
 
-	// Obtain a set of the last poses this person had. Newer values are pushed to the front of the list.
+	/*
+	 * Obtain a set of the last poses this person had. Newer values are pushed to the front of the list.
+	 */
 	std::list<geometry_msgs::Pose>& last_poses() { return _last_poses; }
 
-	// Return the very latest pose pushed to this person.
+	/*
+	 * Return the very latest pose pushed to this person.
+	 */
 	geometry_msgs::Pose& last_pose();
 
-	// Pushes a new pose to the set of last poses which this person has, and updates the last update time.
+	/*
+	 * Pushes a new pose to the set of last poses which this person has, and updates the last update time.
+	 */
 	void push_pose(const geometry_msgs::Pose& pose);
 };
 

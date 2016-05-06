@@ -1,10 +1,3 @@
-/*
- * PersonDetector.h
- *
- *  Created on: Apr 20, 2016
- *      Author: blacksmithgu
- */
-
 #ifndef SRC_PERSONDETECTOR_H_
 #define SRC_PERSONDETECTOR_H_
 
@@ -15,6 +8,10 @@
 
 #include "utils.h"
 
+/*
+ * Class responsible for tracking a set of people by associating each with a PersonClassifier,
+ * which can mark which person an input point cloud is most closely associated with.
+ */
 class PersonDetector {
 private:
 
