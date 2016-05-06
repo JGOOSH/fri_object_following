@@ -173,13 +173,12 @@ int main(int argc, char* argv[]) {
 		move_goal.target_pose.header.stamp = ros::Time::now();
 		move_goal.target_pose.header.frame_id = CAMERA_FRAME_OF_REFERENCE;
 
-		// In this frame of reference, X means forwards, Y means left, and Z means up.
-		// TODO: Not sure if we need to rotate and move forward on X only, or if we can just
-		// move X/Y
-		// For now, we assume that only X/Yaw works.
+		// In this frame of reference, Z means forwards, X means left, and Y means up.
+		// TODO: Not sure if we need to rotate and move forward on Z only, or if we can just
+		// move X/Z
 
 		// We compute the yaw as the arctan of y/x, as usual.
-		double target_yaw = atan2(-relative_person_pose.position.x, relative_person_pose.position.z);
+		double target_yaw = atan2(relative_person_pose.position.x, relative_person_pose.position.z);
 
 		// We compute the distance as the magnitude of the X,Y coordinates.
 		double tentative_distance = sqrt(pow(relative_person_pose.position.x, 2) + pow(relative_person_pose.position.z, 2));
@@ -188,10 +187,12 @@ int main(int argc, char* argv[]) {
 		ROS_INFO(" -> Moving %f distance units with an angle of %f...", target_distance, target_yaw);
 
 		// Subtract some from the distance to move to ensure that we don't move ONTO the lifeform
-		move_goal.target_pose.pose.position.x = target_distance;
+		move_goal.target_pose.pose.position.x = target_distance * sin(target_yaw);
 		move_goal.target_pose.pose.position.y = 0.0;
-		move_goal.target_pose.pose.position.z = 0.0;
-		move_goal.target_pose.pose.orientation = tf::createQuaternionMsgFromYaw(target_yaw);
+		move_goal.target_pose.pose.position.z = target_distance * cos(target_yaw);
+		move_goal.target_pose.pose.orientation = tf::createQuaternionMsgFromYaw(PI / 2);
+
+		ROS_INFO(" -> X: %f, Z: %f, Angle: %f", move_goal.target_pose.pose.position.x, move_goal.target_pose.pose.position.z, target_yaw);
 
 		// Publish where we tenatively want to go.
 		target_publisher.publish(move_goal.target_pose);
