@@ -216,6 +216,8 @@ int main(int argc, char* argv[]) {
 		move_base_msgs::MoveBaseGoal move_goal;
 		move_goal.target_pose = create_move_goal_target(output_pose.pose, DISTANCE_BUFFER);
 
+		ROS_INFO(" -> Moving to relative offset (%f, -, %f)", move_goal.target_pose.pose.position.x, move_goal.target_pose.pose.position.z);
+
 		// Publish where we tenatively want to go.
 		target_publisher.publish(move_goal.target_pose);
 
