@@ -30,7 +30,7 @@
 #define TARGET_TOPIC "/creeper/target_pose"
 
 #define UPDATE_RATE 10
-#define DISTANCE_BUFFER 1.0
+#define DISTANCE_BUFFER 1.5
 #define PI 3.1415926
 
 #define PERSON_FRAME_OF_REFERENCE "/map"
@@ -38,7 +38,11 @@
 
 // C++ is a sad, sad language
 
+// Due to incomprehensible boost error messages with boost::bind, we make the person detector a global variable and call
+// it's methods directly.
 PersonDetector detector;
+
+// Used for queueing messages which don't have the other message component yet.
 std::list<PosePtr> pose_backlog;
 std::list<CloudPtr> cloud_backlog;
 
@@ -53,6 +57,9 @@ void detector_callback(const PosePtr pose, const CloudPtr cloud) {
 			(*pose).pose.orientation.w, (*pose).pose.orientation.x, (*pose).pose.orientation.z, (*pose).pose.orientation.z);
 }
 
+/*
+ * Callback specifically for accepting a pose from the detector, and pairing it with any backlogged clouds.
+ */
 void pose_callback(const PosePtr pose) {
 	pose_backlog.push_back(pose);
 
@@ -63,6 +70,9 @@ void pose_callback(const PosePtr pose) {
 	}
 }
 
+/*
+ * Callback specifically for accepting a cloud from the detector, and pairing it with any backlogged poses.
+ */
 void cloud_callback(const CloudPtr cloud) {
 	cloud_backlog.push_back(cloud);
 
@@ -74,15 +84,51 @@ void cloud_callback(const CloudPtr cloud) {
 }
 
 /*
- * Creates a dummy stamped pose which we can pass off to the transform listener.
+ * Creates a dummy stamped pose which we can pass off to the transform listener. Sets the pose and reference frame,
+ * and then sets the stamped time to now.
  */
 geometry_msgs::PoseStamped create_dummy_stamped_pose(const geometry_msgs::Pose& pose, const std::string reference_frame_in) {
 	geometry_msgs::PoseStamped stamped_pose;
 	stamped_pose.pose = pose;
 	stamped_pose.header.frame_id = reference_frame_in;
-	stamped_pose.header.stamp = ros::Time(0);
+	stamped_pose.header.stamp = ros::Time::now();
 
 	return stamped_pose;
+}
+
+/*
+ * Computes the moev goal pose for the robot. The target pose is computed in the robot's camera frame of reference
+ * (eg, CAMERA_FRAME_OF_REFERENCE), and implicitly represents a position which is on the line between the robot and
+ * the person, and is distance_buffer away from the person.
+ *
+ * Eg, it moves to distance_buffer away from the person.
+ */
+geometry_msgs::PoseStamped create_move_goal_target(const geometry_msgs::Pose& target_pose, double distance_buffer) {
+	// In the Camera frame of reference, Z is forward, X is right, and Y is up.
+
+	// We compute the yaw as the arctan of x/z; the flipping of x/z is due to the flipped coordinate frame, where
+	// z goes outward and x goes to the right.
+	double target_yaw = atan2(target_pose.position.x, target_pose.position.z);
+
+	// The distance is normal Euclidian Distance; to enforce the distance buffer, we subtract it from the
+	// total distance and clamp to ensure it's >= 0.
+	double tentative_distance = sqrt(pow(target_pose.position.x, 2) + pow(target_pose.position.z, 2));
+	double target_distance = std::max(0.0, tentative_distance - DISTANCE_BUFFER);
+
+	// Then, we compute the move goal with some straightforward trigonometry. Interestingly, the
+	// orientation assumes 0 radians is on the X axis, so being "straight" implies an orientation with a
+	// yaw of PI / 2.
+	geometry_msgs::PoseStamped result;
+	result.pose.position.x = target_distance * sin(target_yaw);
+	result.pose.position.y = 0.0;
+	result.pose.position.z = target_distance * cos(target_yaw);
+	result.pose.orientation = tf::createQuaternionMsgFromYaw(PI / 2);
+
+	// Initialize header information.
+	result.header.frame_id = CAMERA_FRAME_OF_REFERENCE;
+	result.header.stamp = ros::Time::now();
+
+	return result;
 }
 
 /*
@@ -95,16 +141,17 @@ int main(int argc, char* argv[]) {
 
 	ROS_INFO("Connection to ROS initialized...");
 
-	// Make dummy subscribers to try and get SOMETHING to work
+	// Add subscribers for both the pose and cloud topics.
 	ros::Subscriber pose_subscriber = node_handle.subscribe(POSE_TOPIC, 10, pose_callback);
 	ros::Subscriber cloud_subscriber = node_handle.subscribe(CLOUD_TOPIC, 10, cloud_callback);
 
-	// Make a dummy publisher to show where exactly we intend to move.
+	// Create a debug publisher to explicitly output our target position at any given time.
 	ros::Publisher target_publisher = node_handle.advertise<geometry_msgs::PoseStamped>(TARGET_TOPIC, 10);
 
 	ROS_INFO("Message synchronizer initialized...");
 
-	// Now, we just repeatedly loop and then follow the first person in the detector.
+	// Initialize the update rate for the robot as well as the persistent transform listener, for transforming between
+	// frames of reference.
 	ros::Rate update_rate(UPDATE_RATE);
 	tf::TransformListener transform_listener;
 
@@ -118,6 +165,7 @@ int main(int argc, char* argv[]) {
 
 	ros::Time last_update_time = ros::Time::now();
 
+	// Now, we just repeatedly loop and then follow the first person in the detector.
 	while(ros::ok()) {
 		// Fetch person numero 0
 		boost::optional<Person&> potential_person = detector.person_by_id(0);
@@ -153,46 +201,20 @@ int main(int argc, char* argv[]) {
 		geometry_msgs::PoseStamped input_pose = create_dummy_stamped_pose(person.last_pose(), PERSON_FRAME_OF_REFERENCE);
 		geometry_msgs::PoseStamped output_pose;
 
-		ROS_INFO("Input Pose: (%f, %f, %f) : (%f, %f, %f, %f)", input_pose.pose.position.x, input_pose.pose.position.y, input_pose.pose.position.z,
-				input_pose.pose.orientation.w, input_pose.pose.orientation.x, input_pose.pose.orientation.z, input_pose.pose.orientation.z);
+		try {
+			transform_listener.transformPose(CAMERA_FRAME_OF_REFERENCE, input_pose, output_pose);
+			transform_listener.waitForTransform(CAMERA_FRAME_OF_REFERENCE, PERSON_FRAME_OF_REFERENCE, ros::Time(0), ros::Duration(5.0));
+		} catch(const tf::TransformException& transformException) {
+			ROS_WARN("TF transformation information not buffered yet, waiting...");
 
-		transform_listener.transformPose(CAMERA_FRAME_OF_REFERENCE, input_pose, output_pose);
-		transform_listener.waitForTransform(CAMERA_FRAME_OF_REFERENCE, PERSON_FRAME_OF_REFERENCE, ros::Time(0), ros::Duration(5.0));
+			ros::spinOnce();
+			update_rate.sleep();
+			continue;
+		}
 
-		// Now, we finally have the person's pose relative to us!
-		geometry_msgs::Pose relative_person_pose = output_pose.pose;
-
-		ROS_INFO(" -> Person %ld found at pose (%f, %f, %f)", person.uid(),
-				relative_person_pose.position.x, relative_person_pose.position.y, relative_person_pose.position.z);
-
-		// Now, we generate the move base goal based on the relative person position.
-		// We can take advantage of the fact that the relative pose is from the perspective
-		// of the camera, so the distance is the magnitude of the (X, Y) of the pose, and the
-		// angle is the arctan.
+		// Compute the move base goal in the camera frame of reference.
 		move_base_msgs::MoveBaseGoal move_goal;
-		move_goal.target_pose.header.stamp = ros::Time::now();
-		move_goal.target_pose.header.frame_id = CAMERA_FRAME_OF_REFERENCE;
-
-		// In this frame of reference, Z means forwards, X means left, and Y means up.
-		// TODO: Not sure if we need to rotate and move forward on Z only, or if we can just
-		// move X/Z
-
-		// We compute the yaw as the arctan of y/x, as usual.
-		double target_yaw = atan2(relative_person_pose.position.x, relative_person_pose.position.z);
-
-		// We compute the distance as the magnitude of the X,Y coordinates.
-		double tentative_distance = sqrt(pow(relative_person_pose.position.x, 2) + pow(relative_person_pose.position.z, 2));
-		double target_distance = std::max(0.0, tentative_distance - DISTANCE_BUFFER);
-
-		ROS_INFO(" -> Moving %f distance units with an angle of %f...", target_distance, target_yaw);
-
-		// Subtract some from the distance to move to ensure that we don't move ONTO the lifeform
-		move_goal.target_pose.pose.position.x = target_distance * sin(target_yaw);
-		move_goal.target_pose.pose.position.y = 0.0;
-		move_goal.target_pose.pose.position.z = target_distance * cos(target_yaw);
-		move_goal.target_pose.pose.orientation = tf::createQuaternionMsgFromYaw(PI / 2);
-
-		ROS_INFO(" -> X: %f, Z: %f, Angle: %f", move_goal.target_pose.pose.position.x, move_goal.target_pose.pose.position.z, target_yaw);
+		move_goal.target_pose = create_move_goal_target(output_pose.pose, DISTANCE_BUFFER);
 
 		// Publish where we tenatively want to go.
 		target_publisher.publish(move_goal.target_pose);
