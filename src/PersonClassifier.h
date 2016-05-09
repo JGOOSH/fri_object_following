@@ -1,7 +1,8 @@
 #ifndef SRC_PERSONCLASSIFIER_H_
 #define SRC_PERSONCLASSIFIER_H_
 
-#include <sensor_msgs/PointCloud2.h>
+#include "sensor_msgs/PointCloud2.h"
+#include "geometry_msgs/Pose.h"
 
 /*
  * Classifies random input clouds from the sensor as either a positive or negative match for
@@ -13,7 +14,7 @@ public:
 	 * Returns true if the person detailed in the point cloud is "close enough" to the current
 	 * life form, and false otherwise.
 	 */
-	virtual bool is_equivalent(const sensor_msgs::PointCloud2& cloud) = 0;
+	virtual bool is_equivalent(const geometry_msgs::Pose& pose, const sensor_msgs::PointCloud2& cloud) = 0;
 
 	// We have to override the destructor for some reason.
 	virtual ~PersonClassifier();

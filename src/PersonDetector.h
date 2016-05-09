@@ -29,7 +29,7 @@ private:
 	unsigned int _current_uid;
 
 	// Attempts to classify the cloud as a person which is currently being tracked.
-	boost::optional<Person&> classify_cloud(const sensor_msgs::PointCloud2& cloud);
+	boost::optional<Person&> classify_message(const geometry_msgs::Pose& pose, const sensor_msgs::PointCloud2& cloud);
 
 	// Given a pose and cloud, creates a new person.
 	Person& create_person(const geometry_msgs::Pose& pose, const sensor_msgs::PointCloud2& cloud);

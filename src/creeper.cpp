@@ -33,6 +33,9 @@
 #define DISTANCE_BUFFER 1.5
 #define PI 3.1415926
 
+#define IDLE_ROTATE_DEG 30
+#define IDLE_ROTATE_RADIANS (IDLE_ROTATE_DEG / 180.0 * PI)
+
 #define PERSON_FRAME_OF_REFERENCE "/map"
 #define CAMERA_FRAME_OF_REFERENCE "/nav_kinect_rgb_optical_frame"
 
@@ -132,6 +135,71 @@ geometry_msgs::PoseStamped create_move_goal_target(const geometry_msgs::Pose& ta
 }
 
 /*
+ * Creates a pose which corresponds to a counterclockwise rotation of rotate_amount radians.
+ */
+geometry_msgs::PoseStamped create_move_goal_rotate(float rotate_amount) {
+	geometry_msgs::PoseStamped result;
+	result.pose.position.x = 0.0;
+	result.pose.position.y = 0.0;
+	result.pose.position.z = 0.0;
+	result.pose.orientation = tf::createQuaternionMsgFromYaw(PI / 2 + rotate_amount);
+
+	result.header.frame_id = CAMERA_FRAME_OF_REFERENCE;
+	result.header.stamp = ros::Time::now();
+
+	return result;
+}
+
+/*
+ * Determines the next action given the global state of the program.
+ *
+ * Unfortunately, as we have a mishmash of global/nonglobal state, we have to pass in
+ * the transform listener.
+ */
+boost::optional<geometry_msgs::PoseStamped> act(tf::TransformListener& transform_listener, ros::Time& last_update_time) {
+	// Fetch person numero 0
+	boost::optional<Person&> potential_person = detector.person_by_id(0);
+
+	// If a person with index 0 doesn't exist yet, sit here uselessly.
+	if(!potential_person.is_initialized()) {
+		ROS_INFO("No person found, sleeping...");
+
+		return boost::optional<geometry_msgs::PoseStamped>(create_move_goal_rotate(IDLE_ROTATE_RADIANS));
+	}
+
+	// If they do exist, extract them.
+	Person& person = potential_person.get();
+
+	// Don't do anything if this person's data is stale.
+	if(person.last_update_time() <= last_update_time) {
+		ROS_INFO("Person info is stale, sleeping...");
+
+		return boost::optional<geometry_msgs::PoseStamped>(create_move_goal_rotate(IDLE_ROTATE_RADIANS));
+	}
+
+	// Update the last update time, otherwise.
+	last_update_time = person.last_update_time();
+
+	ROS_INFO("Person %ld fetched from the person detector...", person.uid());
+
+	// Now, we need to convert the person's pose from the /map frame of reference
+	// to the kinect frame of reference, so we use the transform listener.
+	geometry_msgs::PoseStamped input_pose = create_dummy_stamped_pose(person.last_pose(), PERSON_FRAME_OF_REFERENCE);
+	geometry_msgs::PoseStamped output_pose;
+
+	try {
+		transform_listener.transformPose(CAMERA_FRAME_OF_REFERENCE, input_pose, output_pose);
+		transform_listener.waitForTransform(CAMERA_FRAME_OF_REFERENCE, PERSON_FRAME_OF_REFERENCE, ros::Time(0), ros::Duration(5.0));
+	} catch(const tf::TransformException& transformException) {
+		ROS_WARN("TF transformation information not buffered yet, waiting...");
+
+		return boost::none;
+	}
+
+	return create_move_goal_target(output_pose.pose, DISTANCE_BUFFER);
+}
+
+/*
  * Main entry point for the node.
  */
 int main(int argc, char* argv[]) {
@@ -167,64 +235,25 @@ int main(int argc, char* argv[]) {
 
 	// Now, we just repeatedly loop and then follow the first person in the detector.
 	while(ros::ok()) {
-		// Fetch person numero 0
-		boost::optional<Person&> potential_person = detector.person_by_id(0);
+		// Compute where exactly we want to go.
+		boost::optional<geometry_msgs::PoseStamped> next_action = act(transform_listener, last_update_time);
 
-		// If a person with index 0 doesn't exist yet, sit here uselessly.
-		if(!potential_person.is_initialized()) {
-			ROS_INFO("No person found, sleeping...");
+		if(next_action.is_initialized()) {
+			// Compute the move base goal in the camera frame of reference.
+			move_base_msgs::MoveBaseGoal move_goal;
+			move_goal.target_pose = *next_action;
 
-			ros::spinOnce();
-			update_rate.sleep();
-			continue;
+			ROS_INFO(" -> Moving to relative offset (%f, -, %f)", move_goal.target_pose.pose.position.x, move_goal.target_pose.pose.position.z);
+
+			// Publish where we tenatively want to go.
+			target_publisher.publish(move_goal.target_pose);
+
+			// Send the goal and wait 3 seconds, at most, for a response.
+			action_client.sendGoalAndWait(move_goal, ros::Duration(3.0f));
 		}
-
-		// If they do exist, extract them.
-		Person& person = potential_person.get();
-
-		// Don't do anything if this person's data is stale.
-		if(person.last_update_time() <= last_update_time) {
-			ROS_INFO("Person info is stale, sleeping...");
-
-			ros::spinOnce();
-			update_rate.sleep();
-			continue;
-		}
-
-		// Update the last update time, otherwise.
-		last_update_time = person.last_update_time();
-
-		ROS_INFO("Person %ld fetched from the person detector...", person.uid());
-
-		// Now, we need to convert the person's pose from the /map frame of reference
-		// to the kinect frame of reference, so we use the transform listener.
-		geometry_msgs::PoseStamped input_pose = create_dummy_stamped_pose(person.last_pose(), PERSON_FRAME_OF_REFERENCE);
-		geometry_msgs::PoseStamped output_pose;
-
-		try {
-			transform_listener.transformPose(CAMERA_FRAME_OF_REFERENCE, input_pose, output_pose);
-			transform_listener.waitForTransform(CAMERA_FRAME_OF_REFERENCE, PERSON_FRAME_OF_REFERENCE, ros::Time(0), ros::Duration(5.0));
-		} catch(const tf::TransformException& transformException) {
-			ROS_WARN("TF transformation information not buffered yet, waiting...");
-
-			ros::spinOnce();
-			update_rate.sleep();
-			continue;
-		}
-
-		// Compute the move base goal in the camera frame of reference.
-		move_base_msgs::MoveBaseGoal move_goal;
-		move_goal.target_pose = create_move_goal_target(output_pose.pose, DISTANCE_BUFFER);
-
-		ROS_INFO(" -> Moving to relative offset (%f, -, %f)", move_goal.target_pose.pose.position.x, move_goal.target_pose.pose.position.z);
-
-		// Publish where we tenatively want to go.
-		target_publisher.publish(move_goal.target_pose);
-
-		// Send the goal and wait 3 seconds, at most, for a response.
-		action_client.sendGoalAndWait(move_goal, ros::Duration(3.0f));
 
 		ros::spinOnce();
+		update_rate.sleep();
 	}
 
 	return 0;

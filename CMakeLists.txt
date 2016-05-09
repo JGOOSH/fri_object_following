@@ -1,24 +1,23 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(fri_object_following)
 
-# Include OpenCV
-find_package(OpenCV)
+# Include PCL
+find_package(PCL 1.7 REQUIRED)
+
 
 # Include the Catkin Packages for moving the robot and general ROS packages.
 find_package(catkin REQUIRED COMPONENTS
+	roscpp
 	actionlib
 	actionlib_msgs
 	tf
 	move_base_msgs
-	message_generation
-	message_filters
-	roscpp
-	rospy
 	std_msgs
 	geometry_msgs
 	sensor_msgs
-	cv_bridge
 	image_transport
+	pcl_conversions
+	pcl_ros
 )
 
 # Declare this package as a catkin package
@@ -26,12 +25,18 @@ catkin_package()
 
 # Build Info
 include_directories(${catkin_INCLUDE_DIRS})
-include_directories(${OpenCV_INCLUDE_DIRS})
+include_directories(${PCL_INCLUDE_DIRS})
+
+link_directories(${PCL_LIBRARY_DIRS})
+
+add_definitions(${PCL_DEFINITIONS})
 
 add_executable(creeper 
 	src/creeper.cpp 
 	src/Person.cpp 
 	src/PersonDetector.cpp
 	src/TrivialPersonClassifier.cpp
+	src/ShirtColorPersonClassifier.cpp
 	src/PersonClassifier.cpp)
-target_link_libraries(creeper ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+
+target_link_libraries(creeper ${catkin_LIBRARIES} ${PCL_LIBRARIES})

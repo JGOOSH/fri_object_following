@@ -7,6 +7,7 @@
 
 #include "PersonDetector.h"
 #include "TrivialPersonClassifier.h"
+#include "ShirtColorPersonClassifier.h"
 
 #include <ros/ros.h>
 
@@ -24,13 +25,13 @@ PersonDetector::~PersonDetector() {
  */
 Person& PersonDetector::handle_update(const PosePtr pose, const CloudPtr cloud) {
 	// First, we need to find the person actually associated with the cloud, if any.
-	boost::optional<Person&> victim = classify_cloud(*cloud);
+	boost::optional<Person&> victim = classify_message(pose->pose, *cloud);
 
 	// If we don't find a person, we need to create a new person.
 	if(!victim.is_initialized())
-		return create_person((*pose).pose, *cloud);
+		return create_person(pose->pose, *cloud);
 	else {
-		victim->push_pose((*pose).pose);
+		victim->push_pose(pose->pose);
 		return victim.get();
 	}
 
@@ -39,7 +40,7 @@ Person& PersonDetector::handle_update(const PosePtr pose, const CloudPtr cloud) 
 /*
  * Attempts to find the person which is most closely related to the provided cloud.
  */
-boost::optional<Person&> PersonDetector::classify_cloud(const sensor_msgs::PointCloud2& cloud) {
+boost::optional<Person&> PersonDetector::classify_message(const geometry_msgs::Pose& pose, const sensor_msgs::PointCloud2& cloud) {
 	// First, we need to see if any of the classifiers state that we've seen this person before.
 	for(std::map<unsigned int, Person>::iterator iter = tracked().begin(); iter != tracked().end(); iter++) {
 		unsigned int uid = (*iter).first;
@@ -49,7 +50,7 @@ boost::optional<Person&> PersonDetector::classify_cloud(const sensor_msgs::Point
 		if(!classifier.is_initialized())
 			continue;
 
-		if(classifier.get().is_equivalent(cloud))
+		if(classifier.get().is_equivalent(pose, cloud))
 			return boost::optional<Person&>((*iter).second);
 	}
 
@@ -64,11 +65,11 @@ Person& PersonDetector::create_person(const geometry_msgs::Pose& pose, const sen
 	Person lifeform(_current_uid++);
 	lifeform.push_pose(pose);
 
-	boost::shared_ptr<PersonClassifier> trivial_classifier(new TrivialPersonClassifier);
+	boost::shared_ptr<PersonClassifier> classifier(new ShirtColorPersonClassifier(cloud, 20.0));
 
 	// Then insert them.
 	tracked()[lifeform.uid()] = lifeform;
-	classifiers()[lifeform.uid()] = trivial_classifier;
+	classifiers()[lifeform.uid()] = classifier;
 
 	// Return a reference to the person in the map.
 	return tracked()[lifeform.uid()];
