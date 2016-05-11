@@ -29,15 +29,16 @@
 #define CLOUD_TOPIC "/segbot_pcl_person_detector/human_clouds"
 #define TARGET_TOPIC "/creeper/target_pose"
 
-#define UPDATE_RATE 10
+#define UPDATE_RATE 5
 #define DISTANCE_BUFFER 1.5
 #define PI 3.1415926
 
-#define IDLE_ROTATE_DEG 30
-#define IDLE_ROTATE_RADIANS (IDLE_ROTATE_DEG / 180.0 * PI)
+#define IDLE_ROTATE_DEG 15
+#define IDLE_ROTATE_RADIANS ((IDLE_ROTATE_DEG / 180.0) * PI)
 
 #define PERSON_FRAME_OF_REFERENCE "/map"
 #define CAMERA_FRAME_OF_REFERENCE "/nav_kinect_rgb_optical_frame"
+#define BASE_FRAME_OF_REFERENCE "/base_link"
 
 // C++ is a sad, sad language
 
@@ -142,9 +143,9 @@ geometry_msgs::PoseStamped create_move_goal_rotate(float rotate_amount) {
 	result.pose.position.x = 0.0;
 	result.pose.position.y = 0.0;
 	result.pose.position.z = 0.0;
-	result.pose.orientation = tf::createQuaternionMsgFromYaw(PI / 2 + rotate_amount);
+	result.pose.orientation = tf::createQuaternionMsgFromYaw(rotate_amount);
 
-	result.header.frame_id = CAMERA_FRAME_OF_REFERENCE;
+	result.header.frame_id = BASE_FRAME_OF_REFERENCE;
 	result.header.stamp = ros::Time::now();
 
 	return result;
@@ -187,14 +188,21 @@ boost::optional<geometry_msgs::PoseStamped> act(tf::TransformListener& transform
 	geometry_msgs::PoseStamped input_pose = create_dummy_stamped_pose(person.last_pose(), PERSON_FRAME_OF_REFERENCE);
 	geometry_msgs::PoseStamped output_pose;
 
-	try {
-		transform_listener.transformPose(CAMERA_FRAME_OF_REFERENCE, input_pose, output_pose);
-		transform_listener.waitForTransform(CAMERA_FRAME_OF_REFERENCE, PERSON_FRAME_OF_REFERENCE, ros::Time(0), ros::Duration(5.0));
-	} catch(const tf::TransformException& transformException) {
-		ROS_WARN("TF transformation information not buffered yet, waiting...");
+	ros::Rate tf_buffer_rate(20);
+	bool tf_buffered = true;
+	do { 
+		tf_buffered = true;
+		try {
+			transform_listener.transformPose(CAMERA_FRAME_OF_REFERENCE, input_pose, output_pose);
+			transform_listener.waitForTransform(CAMERA_FRAME_OF_REFERENCE, PERSON_FRAME_OF_REFERENCE, ros::Time(0), ros::Duration(5.0));
+		} catch(const tf::TransformException& transformException) {
+			ROS_WARN("TF transformation information not buffered yet, waiting...");
 
-		return boost::none;
-	}
+			tf_buffered = false;
+		}
+
+		tf_buffer_rate.sleep();
+	} while(!tf_buffered);
 
 	return create_move_goal_target(output_pose.pose, DISTANCE_BUFFER);
 }
@@ -249,7 +257,12 @@ int main(int argc, char* argv[]) {
 			target_publisher.publish(move_goal.target_pose);
 
 			// Send the goal and wait 3 seconds, at most, for a response.
-			action_client.sendGoalAndWait(move_goal, ros::Duration(3.0f));
+			action_client.sendGoal(move_goal);
+			action_client.waitForResult(ros::Duration(3.0f));
+
+			ROS_INFO("Movement finished, moving onto next action.");
+		} else {
+			ROS_INFO("No action found, waiting...");
 		}
 
 		ros::spinOnce();

@@ -65,7 +65,8 @@ Person& PersonDetector::create_person(const geometry_msgs::Pose& pose, const sen
 	Person lifeform(_current_uid++);
 	lifeform.push_pose(pose);
 
-	boost::shared_ptr<PersonClassifier> classifier(new ShirtColorPersonClassifier(cloud, 20.0));
+	// boost::shared_ptr<PersonClassifier> classifier(new ShirtColorPersonClassifier(cloud, 30.0));
+	boost::shared_ptr<PersonClassifier> classifier(new TrivialPersonClassifier);
 
 	// Then insert them.
 	tracked()[lifeform.uid()] = lifeform;

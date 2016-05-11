@@ -45,9 +45,12 @@ bool ShirtColorPersonClassifier::is_equivalent(const geometry_msgs::Pose&, const
 
 	Eigen::Vector3i color_difference = _last_color_reading - input_average_color;
 
-	ROS_INFO("Input Color: %d, %d, %d | Difference: %d, %d, %d",
+	ROS_INFO("Input Color: %d, %d, %d | Difference: %d, %d, %d | Last Reading: %d, %d, %d",
 		input_average_color(0), input_average_color(1), input_average_color(2),
-		color_difference(0), color_difference(1), color_difference(2));
+		color_difference(0), color_difference(1), color_difference(2),
+		_last_color_reading(0), _last_color_reading(1), _last_color_reading(2));
+
+	ROS_INFO("Distance: %d | Threshold: %f", color_difference.norm(), _color_distance_threshold);
 
 	// Then, if the length of the difference vector is less than the threshold, update the
 	// last reading and return true.
