@@ -20,6 +20,7 @@ Current Roadmap:
 Created by Victoria Zhou, Saket Sadani, and Michael Brenan.
 
 How to Run:
+
 1. Download utexas-bwi library (if not already installed). Instructions found at https://github.com/utexas-bwi/bwi
 2. Download background_people_perception: git clone https://github.com/utexas-bwi/bwi_experimental into a workspace
 2. Download this repo: git clone https://github.com/blacksmithgu/fri_object_following into workspace
