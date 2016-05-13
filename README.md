@@ -17,8 +17,6 @@ Current Roadmap:
 - [x] Quality Assurance & Testing
 - [x] Create Final Presentation Papers
 
-Created by Victoria Zhou, Saket Sadani, and Michael Brenan.
-
 How to Run:
 
 1. Download utexas-bwi library (if not already installed). Instructions found at https://github.com/utexas-bwi/bwi
@@ -26,7 +24,9 @@ How to Run:
 2. Download this repo: git clone https://github.com/blacksmithgu/fri_object_following into workspace
 3. catkin_make (in the workspace)
 5. source devel/setup.bash
-6. roslaunch roslaunch bwi_launch segbot_v2.launch
-7. Localize the robot (give it it's 2D position estimate)
+6. roslaunch bwi_launch segbot_v2.launch
+7. Localize the robot (give it its 2D position estimate)
 8. Run background_pcl_perception: roslaunch pcl_perception background_people_detection.launch
 9. Run creeper: rosrun fri_object_following creeper
+
+Created by Victoria Zhou, Saket Sadani, and Michael Brenan.
