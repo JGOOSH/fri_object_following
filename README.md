@@ -24,7 +24,7 @@ How to Run:
 1. Download utexas-bwi library (if not already installed). Instructions found at https://github.com/utexas-bwi/bwi
 2. Download background_people_perception: git clone https://github.com/utexas-bwi/bwi_experimental into a workspace
 2. Download this repo: git clone https://github.com/blacksmithgu/fri_object_following into workspace
-3. catkin_make workspace
+3. catkin_make (in the workspace)
 5. source devel/setup.bash
 6. roslaunch roslaunch bwi_launch segbot_v2.launch
 7. Localize the robot (give it it's 2D position estimate)
