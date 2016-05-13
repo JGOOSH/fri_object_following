@@ -9,12 +9,23 @@ number of frames.
 
 Current Roadmap:
 - [x] Create Repository
-- [ ] Set up ROS Project Skeleton
+- [x] Set up ROS Project Skeleton
 - [ ] Determine how to do region selection
-- [ ] Find identifying information about region for tracking
-- [ ] Set up actual tracking and find "center of object" in any frame with some confidence
-- [ ] Set up actual robot motion and distance
-- [ ] Quality Assurance & Testing
-- [ ] Create Final Presentation Papers
+- [x] Find identifying information about region for tracking
+- [x] Set up actual tracking and find "center of object" in any frame with some confidence
+- [x] Set up actual robot motion and distance
+- [x] Quality Assurance & Testing
+- [x] Create Final Presentation Papers
 
 Created by Victoria Zhou, Saket Sadani, and Michael Brenan.
+
+How to Run:
+1. Download utexas-bwi library (if not already installed). Instructions found at https://github.com/utexas-bwi/bwi
+2. Download background_people_perception: git clone https://github.com/utexas-bwi/bwi_experimental into a workspace
+2. Download this repo: git clone https://github.com/blacksmithgu/fri_object_following into workspace
+3. catkin_make workspace
+5. source devel/setup.bash
+6. roslaunch roslaunch bwi_launch segbot_v2.launch
+7. Localize the robot (give it it's 2D position estimate)
+8. Run background_pcl_perception: roslaunch pcl_perception background_people_detection.launch
+9. Run creeper: rosrun fri_object_following creeper
