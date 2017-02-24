@@ -193,8 +193,8 @@ boost::optional<geometry_msgs::PoseStamped> act(tf::TransformListener& transform
 	do { 
 		tf_buffered = true;
 		try {
-			transform_listener.transformPose(CAMERA_FRAME_OF_REFERENCE, input_pose, output_pose);
 			transform_listener.waitForTransform(CAMERA_FRAME_OF_REFERENCE, PERSON_FRAME_OF_REFERENCE, ros::Time(0), ros::Duration(5.0));
+			transform_listener.transformPose(CAMERA_FRAME_OF_REFERENCE, input_pose, output_pose);
 		} catch(const tf::TransformException& transformException) {
 			ROS_WARN("TF transformation information not buffered yet, waiting...");
 
