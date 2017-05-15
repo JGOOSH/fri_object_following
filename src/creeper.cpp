@@ -8,6 +8,7 @@
  * 4. Compute the distance and angle to life form, and then send movement command if life form is sufficiently far away.
  */
 #include <ros/ros.h>
+ #include <std_msgs/Int32.h>
 
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseStamped.h"
@@ -39,6 +40,8 @@
 #define PERSON_FRAME_OF_REFERENCE "/map"
 #define CAMERA_FRAME_OF_REFERENCE "/nav_kinect_rgb_optical_frame"
 #define BASE_FRAME_OF_REFERENCE "/base_link"
+
+int hand_com = 0;
 
 // C++ is a sad, sad language
 
@@ -86,6 +89,14 @@ void cloud_callback(const CloudPtr cloud) {
 		cloud_backlog.pop_front();
 	}
 }
+
+/*
+ * Callback for hand detection command
+ */
+ void hand_callback(const std_msgs::Int32::ConstPtr& m) {
+ 	hand_com = m->data;
+}
+
 
 /*
  * Creates a dummy stamped pose which we can pass off to the transform listener. Sets the pose and reference frame,
@@ -218,8 +229,12 @@ int main(int argc, char* argv[]) {
 	ROS_INFO("Connection to ROS initialized...");
 
 	// Add subscribers for both the pose and cloud topics.
+
 	ros::Subscriber pose_subscriber = node_handle.subscribe(POSE_TOPIC, 10, pose_callback);
 	ros::Subscriber cloud_subscriber = node_handle.subscribe(CLOUD_TOPIC, 10, cloud_callback);
+
+	// Add subscriber for hand detection - signals when the node can start following the person
+	ros::Subscriber hand_subscriber = node_handle.subscribe("follow_me", 10, hand_callback);
 
 	// Create a debug publisher to explicitly output our target position at any given time.
 	ros::Publisher target_publisher = node_handle.advertise<geometry_msgs::PoseStamped>(TARGET_TOPIC, 10);
@@ -246,12 +261,21 @@ int main(int argc, char* argv[]) {
 		// Compute where exactly we want to go.
 		boost::optional<geometry_msgs::PoseStamped> next_action = act(transform_listener, last_update_time);
 
-		if(next_action.is_initialized()) {
+		if(hand_com == 1 ){
+			ROS_INFO("SIGNAL is 1 ");
+		}else{
+			ROS_INFO("SIGNAL is 0");
+		}
+
+		// Checks for hand gesture command before starting to follow a person
+		// When value of hand_com is 1, then we have received information that it can start
+		// following the person in front, otherwise do not change goal to another location
+		if(next_action.is_initialized() && hand_com == 1) {
 			// Compute the move base goal in the camera frame of reference.
 			move_base_msgs::MoveBaseGoal move_goal;
 			move_goal.target_pose = *next_action;
 
-			ROS_INFO(" -> Moving to relative offset (%f, -, %f)", move_goal.target_pose.pose.position.x, move_goal.target_pose.pose.position.z);
+			//ROS_INFO(" -> Moving to relative offset (%f, -, %f)", move_goal.target_pose.pose.position.x, move_goal.target_pose.pose.position.z);
 
 			// Publish where we tenatively want to go.
 			target_publisher.publish(move_goal.target_pose);
@@ -260,11 +284,10 @@ int main(int argc, char* argv[]) {
 			action_client.sendGoal(move_goal);
 			action_client.waitForResult(ros::Duration(3.0f));
 
-			ROS_INFO("Movement finished, moving onto next action.");
+			//ROS_INFO("Movement finished, moving onto next action.");
 		} else {
-			ROS_INFO("No action found, waiting...");
+			//ROS_INFO("No action found, waiting...");
 		}
-
 		ros::spinOnce();
 		update_rate.sleep();
 	}
